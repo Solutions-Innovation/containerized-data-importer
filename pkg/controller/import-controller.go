@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"path"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -794,11 +795,38 @@ func getValueFromAnnotation(pvc *corev1.PersistentVolumeClaim, annotation string
 	return pvc.Annotations[annotation]
 }
 
+func sanitizeResourceNameFragment(fragment string) string {
+	// Replace common invalid characters like '[', ']', '/', ':' with '-'
+	invalidChars := regexp.MustCompile(`[\[\]/: ]+`)
+	sanitized := invalidChars.ReplaceAllString(fragment, "-")
+
+	// Ensure it only contains lowercase alphanumeric, '-', '.'
+	// Remove any other characters that might remain or were introduced.
+	// Note: This is a simplified version of full K8s name validation.
+	validChars := regexp.MustCompile(`[^a-z0-9-.]+`)
+	sanitized = validChars.ReplaceAllString(strings.ToLower(sanitized), "")
+
+	// Remove leading/trailing hyphens that might result from replacements
+	sanitized = strings.Trim(sanitized, "-.")
+
+	// Ensure it's not empty after sanitization
+	if sanitized == "" {
+		// Return a default or handle error, maybe hash the original?
+		// For now, returning a generic placeholder. Consider a better strategy.
+		return "sanitized-empty"
+	}
+
+	return sanitized
+}
+
 // If this pod is going to transfer one checkpoint in a multi-stage import, attach the checkpoint name to the pod name so
 // that each checkpoint gets a unique pod. That way each pod can be inspected using the retainAfterCompletion annotation.
 func podNameWithCheckpoint(pvc *corev1.PersistentVolumeClaim) string {
 	if checkpoint := pvc.Annotations[cc.AnnCurrentCheckpoint]; checkpoint != "" {
-		return pvc.Name + "-checkpoint-" + checkpoint
+		// Use the new sanitization function specifically for the checkpoint fragment
+		sanitizedCheckpoint := sanitizeResourceNameFragment(checkpoint)
+		baseName := pvc.Name + "-checkpoint-" + sanitizedCheckpoint
+		return baseName // We'll let the subsequent GetResourceName call handle final validation/truncation
 	}
 	return pvc.Name
 }

@@ -1135,9 +1135,13 @@ func SetRestrictedSecurityContext(podSpec *corev1.PodSpec) {
 			container.SecurityContext.SeccompProfile = &corev1.SeccompProfile{
 				Type: corev1.SeccompProfileTypeRuntimeDefault,
 			}
-			container.SecurityContext.AllowPrivilegeEscalation = pointer.Bool(false)
-			container.SecurityContext.RunAsNonRoot = pointer.Bool(true)
-			container.SecurityContext.RunAsUser = pointer.Int64(common.QemuSubGid)
+			// container.SecurityContext.AllowPrivilegeEscalation = pointer.Bool(false)
+			// container.SecurityContext.RunAsNonRoot = pointer.Bool(true)
+			// container.SecurityContext.RunAsUser = pointer.Int64(common.QemuSubGid)
+
+			container.SecurityContext.AllowPrivilegeEscalation = pointer.Bool(true)
+			container.SecurityContext.RunAsNonRoot = pointer.Bool(false)
+			container.SecurityContext.RunAsUser = pointer.Int64(common.RootSubGid)
 			if len(container.VolumeMounts) > 0 {
 				hasVolumeMounts = true
 			}
@@ -1148,7 +1152,8 @@ func SetRestrictedSecurityContext(podSpec *corev1.PodSpec) {
 		if podSpec.SecurityContext == nil {
 			podSpec.SecurityContext = &corev1.PodSecurityContext{}
 		}
-		podSpec.SecurityContext.FSGroup = pointer.Int64(common.QemuSubGid)
+		// podSpec.SecurityContext.FSGroup = pointer.Int64(common.QemuSubGid)
+		podSpec.SecurityContext.FSGroup = pointer.Int64(common.RootSubGid)
 	}
 }
 
